@@ -1,0 +1,374 @@
+@page "/new-job"
+@inject XmlGeneratorService XmlGenerator
+@inject PrintJobService JobService
+@inject PrintJobQueue JobQueue
+@inject ILogger<NewJob> Logger
+@inject Microsoft.Extensions.Options.IOptions<BarTenderSettings> Settings
+@inject NavigationManager Nav
+
+<h1 class="h3 mb-4">
+    <i class="bi bi-plus-circle me-2"></i>Nuovo Job di Stampa
+</h1>
+
+<div class="row g-4">
+    <!-- Left: Form -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">Configurazione Job</h5>
+            </div>
+            <div class="card-body">
+                <!-- Integration Mode -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Modalita' integrazione</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="modeFileDrop" value="FileDrop" @onchange="@(() => _mode = "FileDrop")" checked="@(_mode == "FileDrop")" />
+                            <label class="form-check-label" for="modeFileDrop">
+                                <i class="bi bi-folder me-1"></i>File Drop / Hotfolder
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="modeHttp" value="Http" @onchange="@(() => _mode = "Http")" checked="@(_mode == "Http")" />
+                            <label class="form-check-label" for="modeHttp">
+                                <i class="bi bi-globe me-1"></i>HTTP POST
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Template .btw</label>
+                    @if (_templates.Count > 0)
+                    {
+                        <select class="form-select" @bind="_selectedTemplate">
+                            <option value="">-- Seleziona template --</option>
+                            @foreach (var t in _templates)
+                            {
+                                <option value="@t.Path">@t.Name</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" class="form-control" @bind="_selectedTemplate" placeholder="C:\BarTender\Templates\GHS_HazardLabel.btw" />
+                    }
+                </div>
+
+                <!-- Printer -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Stampante</label>
+                    @if (_printers.Count > 0)
+                    {
+                        <select class="form-select" @bind="_printer">
+                            <option value="">(Default del template)</option>
+                            @foreach (var p in _printers)
+                            {
+                                <option value="@p">@p</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" class="form-control" @bind="_printer" placeholder="Nome stampante (opzionale)" />
+                    }
+                </div>
+
+                <!-- Copies -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Copie</label>
+                    <input type="number" class="form-control" @bind="_copies" min="1" max="100" style="max-width: 120px;" />
+                </div>
+
+                <hr />
+
+                <!-- Label Data -->
+                <h6 class="fw-bold mb-3"><i class="bi bi-exclamation-triangle me-1"></i>Dati Etichetta GHS</h6>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Prodotto *</label>
+                        <input type="text" class="form-control" @bind="_labelData.ProductIdentifier" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Codice Interno</label>
+                        <input type="text" class="form-control" @bind="_labelData.InternalCode" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Lotto</label>
+                        <input type="text" class="form-control" @bind="_labelData.BatchLot" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Quantita' netta</label>
+                        <input type="text" class="form-control" @bind="_labelData.NetQuantity" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Avvertenza *</label>
+                        <select class="form-select" @bind="_labelData.SignalWord">
+                            <option value="Pericolo">Pericolo</option>
+                            <option value="Attenzione">Attenzione</option>
+                            <option value="Danger">Danger</option>
+                            <option value="Warning">Warning</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Numero UN</label>
+                        <input type="text" class="form-control" @bind="_labelData.UNNumber" placeholder="UN1090" />
+                    </div>
+                </div>
+
+                <!-- Pictograms -->
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Pittogrammi GHS *</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var pg in _allPictograms)
+                        {
+                            var isSelected = _labelData.Pictograms.Contains(pg.Code);
+                            <button type="button"
+                                    class="btn btn-sm @(isSelected ? "btn-danger" : "btn-outline-secondary")"
+                                    @onclick="() => TogglePictogram(pg.Code)">
+                                @pg.Code <small>(@pg.Description)</small>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Hazard Statements -->
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Indicazioni di pericolo (H-codes) *</label>
+                    <textarea class="form-control font-monospace" rows="3" @bind="_hazardStatementsText"
+                              placeholder="H225 - Liquido e vapori facilmente infiammabili&#10;H319 - Provoca grave irritazione oculare"></textarea>
+                    <small class="text-secondary">Una per riga</small>
+                </div>
+
+                <!-- Precautionary Statements -->
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Consigli di prudenza (P-codes)</label>
+                    <textarea class="form-control font-monospace" rows="3" @bind="_precautionaryStatementsText"
+                              placeholder="P210 - Tenere lontano da fonti di calore&#10;P233 - Tenere il recipiente ben chiuso"></textarea>
+                    <small class="text-secondary">Uno per riga</small>
+                </div>
+
+                <!-- Supplemental Info -->
+                <div class="mt-3">
+                    <label class="form-label">Info supplementari (EUH)</label>
+                    <textarea class="form-control font-monospace" rows="2" @bind="_supplementalText" placeholder="EUH066 - L'esposizione ripetuta può provocare secchezza e screpolature della pelle"></textarea>
+                </div>
+
+                <hr />
+
+                <!-- Supplier -->
+                <h6 class="fw-bold mb-3"><i class="bi bi-building me-1"></i>Fornitore</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nome *</label>
+                        <input type="text" class="form-control" @bind="_labelData.SupplierName" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Telefono</label>
+                        <input type="text" class="form-control" @bind="_labelData.SupplierPhone" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Indirizzo</label>
+                        <input type="text" class="form-control" @bind="_labelData.SupplierAddress" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tel. Emergenza</label>
+                        <input type="text" class="form-control" @bind="_labelData.EmergencyPhone" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">UFI</label>
+                        <input type="text" class="form-control" @bind="_labelData.UFI" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: XML Preview + Actions -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3 sticky-lg-top" style="top: 1rem;">
+            <div class="card-header bg-transparent d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">XML Preview</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadSample">
+                        <i class="bi bi-lightning me-1"></i>Sample
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="GenerateXml">
+                        <i class="bi bi-code-slash me-1"></i>Genera
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <textarea class="form-control font-monospace border-0 rounded-0" rows="16"
+                          @bind="_xmlContent" style="font-size: 0.8rem; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Validation -->
+            @if (_validationErrors.Count > 0)
+            {
+                <div class="card-body border-top pt-3 pb-2">
+                    <div class="alert alert-warning mb-0 py-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Validazione:</strong>
+                        <ul class="mb-0 mt-1">
+                            @foreach (var err in _validationErrors)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
+            <!-- Actions -->
+            <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
+                <button class="btn btn-primary flex-grow-1" @onclick="() => SubmitJob(false)" disabled="@_submitting">
+                    @if (_submitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-printer me-1"></i>Invia Job
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="() => SubmitJob(true)" disabled="@_submitting">
+                    <i class="bi bi-eye me-1"></i>Dry Run
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_submitMessage))
+            {
+                <div class="card-body border-top">
+                    <div class="alert @(_submitSuccess ? "alert-success" : "alert-danger") mb-0 py-2">
+                        @((MarkupString)_submitMessage)
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _mode = "FileDrop";
+    private string _selectedTemplate = "";
+    private string _printer = "";
+    private int _copies = 1;
+    private XmlLabelData _labelData = new();
+    private string _xmlContent = "";
+    private string _hazardStatementsText = "";
+    private string _precautionaryStatementsText = "";
+    private string _supplementalText = "";
+    private List<string> _validationErrors = new();
+    private bool _submitting;
+    private string _submitMessage = "";
+    private bool _submitSuccess;
+    private List<TemplateEntry> _templates = new();
+    private List<string> _printers = new();
+
+    private readonly List<(string Code, string Description)> _allPictograms = new()
+    {
+        ("GHS01", "Bomba che esplode"),
+        ("GHS02", "Fiamma"),
+        ("GHS03", "Fiamma su cerchio"),
+        ("GHS04", "Bombola di gas"),
+        ("GHS05", "Corrosione"),
+        ("GHS06", "Teschio"),
+        ("GHS07", "Punto esclamativo"),
+        ("GHS08", "Pericolo salute"),
+        ("GHS09", "Ambiente"),
+    };
+
+    protected override void OnInitialized()
+    {
+        var settings = Settings.Value;
+        _templates = settings.Templates;
+        _printers = settings.Printers;
+        _mode = settings.DefaultIntegrationMode;
+        if (_templates.Count > 0)
+            _selectedTemplate = _templates[0].Path;
+    }
+
+    private void TogglePictogram(string code)
+    {
+        if (_labelData.Pictograms.Contains(code))
+            _labelData.Pictograms.Remove(code);
+        else
+            _labelData.Pictograms.Add(code);
+    }
+
+    private void LoadSample()
+    {
+        _labelData = XmlGenerator.GenerateSampleData();
+        _hazardStatementsText = string.Join("\n", _labelData.HazardStatements);
+        _precautionaryStatementsText = string.Join("\n", _labelData.PrecautionaryStatements);
+        _supplementalText = string.Join("\n", _labelData.SupplementalInfo);
+        GenerateXml();
+    }
+
+    private void GenerateXml()
+    {
+        SyncTextFieldsToModel();
+        _validationErrors = XmlGenerator.Validate(_labelData);
+        _xmlContent = XmlGenerator.GenerateXml(_labelData);
+    }
+
+    private void SyncTextFieldsToModel()
+    {
+        _labelData.HazardStatements = ParseLines(_hazardStatementsText);
+        _labelData.PrecautionaryStatements = ParseLines(_precautionaryStatementsText);
+        _labelData.SupplementalInfo = ParseLines(_supplementalText);
+    }
+
+    private static List<string> ParseLines(string text) =>
+        (text ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private async Task SubmitJob(bool dryRun)
+    {
+        GenerateXml();
+        if (string.IsNullOrWhiteSpace(_xmlContent))
+        {
+            _submitMessage = "Genera prima l'XML.";
+            _submitSuccess = false;
+            return;
+        }
+
+        _submitting = true;
+        _submitMessage = "";
+
+        try
+        {
+            var templateName = _templates.FirstOrDefault(t => t.Path == _selectedTemplate)?.Name ?? _selectedTemplate;
+
+            var job = new PrintJob
+            {
+                IntegrationMode = _mode,
+                TemplateName = templateName,
+                TemplatePath = _selectedTemplate,
+                PrinterName = _printer,
+                Copies = _copies,
+                IsDryRun = dryRun,
+                XmlContent = _xmlContent
+            };
+
+            job = await JobService.CreateJobAsync(job);
+            await JobQueue.EnqueueAsync(job.Id);
+
+            _submitSuccess = true;
+            _submitMessage = dryRun
+                ? $"<i class='bi bi-eye me-1'></i>Dry run avviato (Job <strong>#{job.Id}</strong>)"
+                : $"<i class='bi bi-check-circle me-1'></i>Job <strong>#{job.Id}</strong> accodato ({_mode})";
+
+            Logger.LogInformation("Job {JobId} created (mode: {Mode}, dryRun: {DryRun})", job.Id, _mode, dryRun);
+        }
+        catch (Exception ex)
+        {
+            _submitSuccess = false;
+            _submitMessage = $"Errore: {ex.Message}";
+            Logger.LogError(ex, "Failed to create job");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

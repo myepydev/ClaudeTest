@@ -1,0 +1,47 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+<nav class="navbar navbar-expand-lg bg-dark flex-lg-column align-items-lg-start p-0" data-bs-theme="dark" style="min-width: 260px;">
+    <div class="container-fluid flex-lg-column align-items-lg-stretch p-lg-0">
+        <a class="navbar-brand d-flex align-items-center gap-2 px-3 py-3 mb-lg-0 text-white" href="/">
+            <i class="bi bi-printer-fill fs-4"></i>
+            <span class="fw-bold">GHS Label Manager</span>
+        </a>
+
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse flex-lg-column" id="navMenu">
+            <ul class="navbar-nav flex-column w-100 gap-1 px-2 py-2">
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2" href="/" Match="NavLinkMatch.All">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2" href="/new-job">
+                        <i class="bi bi-plus-circle"></i> Nuovo Job
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2" href="/history">
+                        <i class="bi bi-clock-history"></i> Storico Job
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2" href="/settings">
+                        <i class="bi bi-gear"></i> Impostazioni
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2" href="/logs">
+                        <i class="bi bi-journal-text"></i> Log Viewer
+                    </NavLink>
+                </li>
+            </ul>
+            <div class="px-3 py-3 mt-auto d-none d-lg-block">
+                <small class="text-secondary">BarTender Web Print Tester v1.0</small>
+            </div>
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,244 @@
+@page "/settings"
+@inject Microsoft.Extensions.Options.IOptions<BarTenderSettings> Settings
+@inject HotfolderTestService HotfolderTest
+@inject HttpIntegrationService HttpService
+@inject ILogger<Settings> Logger
+
+<h1 class="h3 mb-4">
+    <i class="bi bi-gear me-2"></i>Impostazioni
+</h1>
+
+<div class="row g-4">
+    <!-- Hotfolder Settings -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent d-flex align-items-center gap-2">
+                <i class="bi bi-folder text-info"></i>
+                <h5 class="mb-0">Hotfolder / File Drop</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Outbox locale</label>
+                    <input type="text" class="form-control" value="@_settings.Hotfolder.LocalOutboxPath" readonly />
+                    <small class="text-secondary">Cartella temporanea per la scrittura atomica</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Percorso hotfolder (locale o UNC)</label>
+                    <input type="text" class="form-control" @bind="_hotfolderPath" placeholder="\\SERVER\BarTender\Hotfolder" />
+                    <small class="text-secondary">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Supporta percorsi UNC (\\server\share\folder). L'identita' del processo IIS deve avere permessi Read+Write+Modify sia a livello share che NTFS.
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked="@_settings.Hotfolder.UseAtomicMove" disabled />
+                        <label class="form-check-label">
+                            Usa move atomico (scrivi .partial poi rinomina)
+                        </label>
+                    </div>
+                    <small class="text-secondary">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Evita che BarTender legga file parziali durante la scrittura.
+                    </small>
+                </div>
+
+                <hr />
+
+                <!-- Hotfolder Access Test -->
+                <h6 class="fw-bold mb-3"><i class="bi bi-check2-square me-1"></i>Test accesso hotfolder</h6>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-outline-primary" @onclick="TestHotfolderAccess" disabled="@_testingHotfolder">
+                        @if (_testingHotfolder)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-play-circle me-1"></i>Esegui test
+                    </button>
+                </div>
+
+                @if (_hotfolderTestResult != null)
+                {
+                    <div class="alert @(_hotfolderTestResult.OverallSuccess ? "alert-success" : "alert-danger") py-2 mb-3">
+                        <strong>@(_hotfolderTestResult.OverallSuccess ? "Accesso OK" : "Accesso FALLITO")</strong>
+                    </div>
+                    <p class="small"><strong>Identita' processo:</strong> <code>@_hotfolderTestResult.ProcessIdentity</code></p>
+                    <p class="small"><strong>Percorso testato:</strong> <code>@_hotfolderTestResult.TestedPath</code></p>
+
+                    <div class="list-group list-group-flush">
+                        @foreach (var step in _hotfolderTestResult.Steps)
+                        {
+                            <div class="list-group-item px-0 py-2 border-0 d-flex align-items-start gap-2">
+                                <i class="bi @(step.Success ? "bi-check-circle-fill text-success" : "bi-x-circle-fill text-danger") mt-1"></i>
+                                <div>
+                                    <strong>@step.Name</strong>
+                                    <br /><small class="@(step.Success ? "text-success" : "text-danger")">@step.Detail</small>
+                                    @if (!string.IsNullOrEmpty(step.ErrorType))
+                                    {
+                                        <br /><small class="text-secondary">Tipo: @step.ErrorType</small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(step.Suggestion))
+                                    {
+                                        <br /><small class="text-warning"><i class="bi bi-lightbulb me-1"></i>@step.Suggestion</small>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- HTTP Settings -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent d-flex align-items-center gap-2">
+                <i class="bi bi-globe text-warning"></i>
+                <h5 class="mb-0">HTTP Endpoint</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">URL Endpoint</label>
+                    <input type="text" class="form-control" value="@_settings.Http.EndpointUrl" readonly />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Autenticazione</label>
+                    <input type="text" class="form-control" value="@_settings.Http.AuthMode" readonly />
+                    <small class="text-secondary">Configurare in appsettings.json (None / Basic / Token)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Timeout (secondi)</label>
+                    <input type="number" class="form-control" value="@_settings.Http.TimeoutSeconds" readonly style="max-width: 120px;" />
+                </div>
+
+                <hr />
+                <h6 class="fw-bold mb-3"><i class="bi bi-check2-square me-1"></i>Test endpoint HTTP</h6>
+                <button class="btn btn-outline-warning mb-3" @onclick="TestHttpEndpoint" disabled="@_testingHttp">
+                    @if (_testingHttp)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    <i class="bi bi-play-circle me-1"></i>Test connessione
+                </button>
+
+                @if (_httpTestResult != null)
+                {
+                    <div class="alert @(_httpTestResult.StartsWith("OK") ? "alert-success" : "alert-danger") py-2">
+                        @_httpTestResult
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Retry Policy -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Retry Policy</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Tentativi massimi:</strong> @_settings.RetryPolicy.MaxRetries</p>
+                <p><strong>Delay (secondi):</strong> @string.Join(", ", _settings.RetryPolicy.DelaySeconds)</p>
+                <small class="text-secondary">Configurare in appsettings.json</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Catalogo Template</h5>
+            </div>
+            <div class="card-body p-0">
+                @if (_settings.Templates.Count == 0)
+                {
+                    <div class="text-center text-secondary py-4">Nessun template configurato</div>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var t in _settings.Templates)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@t.Name</strong>
+                                    <br /><small class="text-secondary font-monospace">@t.Path</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                <div class="p-3">
+                    <small class="text-secondary">Aggiungere template in appsettings.json > BarTender > Templates</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private BarTenderSettings _settings = new();
+    private string _hotfolderPath = "";
+    private bool _testingHotfolder;
+    private HotfolderTestResult? _hotfolderTestResult;
+    private bool _testingHttp;
+    private string? _httpTestResult;
+
+    protected override void OnInitialized()
+    {
+        _settings = Settings.Value;
+        _hotfolderPath = _settings.Hotfolder.TargetPath;
+    }
+
+    private async Task TestHotfolderAccess()
+    {
+        _testingHotfolder = true;
+        _hotfolderTestResult = null;
+        StateHasChanged();
+
+        try
+        {
+            _hotfolderTestResult = await HotfolderTest.TestAccessAsync(
+                string.IsNullOrWhiteSpace(_hotfolderPath) ? null : _hotfolderPath);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Hotfolder test exception");
+            _hotfolderTestResult = new HotfolderTestResult
+            {
+                OverallSuccess = false,
+                Steps = { new TestStep { Name = "Eccezione", Success = false, Detail = ex.Message } }
+            };
+        }
+        finally
+        {
+            _testingHotfolder = false;
+        }
+    }
+
+    private async Task TestHttpEndpoint()
+    {
+        _testingHttp = true;
+        _httpTestResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await HttpService.SendAsync("<test>ping</test>");
+            _httpTestResult = result.IsSuccess
+                ? $"OK - HTTP {result.StatusCode}"
+                : $"ERRORE - HTTP {result.StatusCode}: {result.ResponseBody}";
+        }
+        catch (Exception ex)
+        {
+            _httpTestResult = $"ERRORE - {ex.Message}";
+        }
+        finally
+        {
+            _testingHttp = false;
+        }
+    }
+}

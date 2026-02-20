@@ -1,0 +1,235 @@
+@page "/history"
+@inject PrintJobService JobService
+
+<h1 class="h3 mb-4">
+    <i class="bi bi-clock-history me-2"></i>Storico Job
+</h1>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">Da</label>
+                <input type="date" class="form-control form-control-sm" @bind="_filterFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">A</label>
+                <input type="date" class="form-control form-control-sm" @bind="_filterTo" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Stato</label>
+                <select class="form-select form-select-sm" @bind="_filterStatus">
+                    <option value="">Tutti</option>
+                    <option value="Completed">Completato</option>
+                    <option value="Failed">Fallito</option>
+                    <option value="Queued">In coda</option>
+                    <option value="Processing">In corso</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Modalita'</label>
+                <select class="form-select form-select-sm" @bind="_filterMode">
+                    <option value="">Tutte</option>
+                    <option value="FileDrop">File Drop</option>
+                    <option value="Http">HTTP</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary btn-sm w-100" @onclick="ApplyFilters">
+                    <i class="bi bi-search me-1"></i>Filtra
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary btn-sm w-100" @onclick="ClearFilters">
+                    <i class="bi bi-x-lg me-1"></i>Reset
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        @if (_loading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+            </div>
+        }
+        else if (_jobs.Count == 0)
+        {
+            <div class="text-center text-secondary py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                Nessun job trovato con i filtri selezionati.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px;">ID</th>
+                            <th>Data</th>
+                            <th>Modalita'</th>
+                            <th>Template</th>
+                            <th>Stampante</th>
+                            <th>Copie</th>
+                            <th>Stato</th>
+                            <th>Risultato</th>
+                            <th style="width: 80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in _jobs)
+                        {
+                            <tr>
+                                <td><code>#@job.Id</code></td>
+                                <td class="text-nowrap small">@job.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td>
+                                    <span class="badge @(job.IntegrationMode == "FileDrop" ? "bg-info-subtle text-info" : "bg-warning-subtle text-warning")">
+                                        @job.IntegrationMode
+                                    </span>
+                                    @if (job.IsDryRun) { <span class="badge bg-secondary-subtle text-secondary ms-1">Dry Run</span> }
+                                </td>
+                                <td class="text-truncate small" style="max-width: 150px;">@job.TemplateName</td>
+                                <td class="small">@(string.IsNullOrEmpty(job.PrinterName) ? "-" : job.PrinterName)</td>
+                                <td>@job.Copies</td>
+                                <td>
+                                    @switch (job.Status)
+                                    {
+                                        case "Completed":
+                                            <span class="badge bg-success-subtle text-success">Completato</span>
+                                            break;
+                                        case "Failed":
+                                            <span class="badge bg-danger-subtle text-danger">Fallito</span>
+                                            break;
+                                        case "Processing":
+                                            <span class="badge bg-primary-subtle text-primary">In corso</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary-subtle text-secondary">In coda</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-truncate small" style="max-width: 200px;">@job.ResultMessage</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowDetail(job)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Detail Modal -->
+@if (_selectedJob != null)
+{
+    <div class="modal show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Job #@_selectedJob.Id - Dettaglio</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDetail"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4"><strong>Stato:</strong> @_selectedJob.Status</div>
+                        <div class="col-md-4"><strong>Modalita':</strong> @_selectedJob.IntegrationMode</div>
+                        <div class="col-md-4"><strong>Dry Run:</strong> @(_selectedJob.IsDryRun ? "Si'" : "No")</div>
+                        <div class="col-md-6"><strong>Creato:</strong> @_selectedJob.CreatedAt.ToLocalTime()</div>
+                        <div class="col-md-6"><strong>Completato:</strong> @(_selectedJob.CompletedAt?.ToLocalTime().ToString() ?? "-")</div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_selectedJob.ResultMessage))
+                    {
+                        <div class="alert @(_selectedJob.Status == "Completed" ? "alert-success" : "alert-danger") py-2">
+                            @_selectedJob.ResultMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_selectedJob.FilePath))
+                    {
+                        <p><strong>File path:</strong> <code>@_selectedJob.FilePath</code></p>
+                    }
+                    @if (_selectedJob.HttpStatusCode.HasValue)
+                    {
+                        <p><strong>HTTP Status:</strong> @_selectedJob.HttpStatusCode</p>
+                    }
+
+                    <h6 class="mt-3">XML inviato</h6>
+                    <pre class="bg-dark text-light p-3 rounded small" style="max-height: 300px; overflow: auto;">@MaskSensitiveData(_selectedJob.XmlContent)</pre>
+
+                    @if (!string.IsNullOrEmpty(_selectedJob.HttpResponseBody))
+                    {
+                        <h6>Risposta HTTP</h6>
+                        <pre class="bg-dark text-light p-3 rounded small" style="max-height: 200px; overflow: auto;">@_selectedJob.HttpResponseBody</pre>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_selectedJob.ErrorDetails))
+                    {
+                        <h6>Dettaglio errore</h6>
+                        <pre class="bg-danger bg-opacity-10 text-danger p-3 rounded small" style="max-height: 200px; overflow: auto;">@_selectedJob.ErrorDetails</pre>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseDetail">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PrintJob> _jobs = new();
+    private bool _loading = true;
+    private DateTime? _filterFrom;
+    private DateTime? _filterTo;
+    private string _filterStatus = "";
+    private string _filterMode = "";
+    private PrintJob? _selectedJob;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ApplyFilters();
+    }
+
+    private async Task ApplyFilters()
+    {
+        _loading = true;
+        _jobs = await JobService.GetJobsFilteredAsync(
+            _filterFrom, _filterTo?.AddDays(1),
+            string.IsNullOrEmpty(_filterStatus) ? null : _filterStatus,
+            string.IsNullOrEmpty(_filterMode) ? null : _filterMode);
+        _loading = false;
+    }
+
+    private async Task ClearFilters()
+    {
+        _filterFrom = null;
+        _filterTo = null;
+        _filterStatus = "";
+        _filterMode = "";
+        await ApplyFilters();
+    }
+
+    private void ShowDetail(PrintJob job) => _selectedJob = job;
+    private void CloseDetail() => _selectedJob = null;
+
+    private static string MaskSensitiveData(string xml)
+    {
+        // Mask phone numbers in XML display (keep first 6 chars)
+        if (string.IsNullOrEmpty(xml)) return "";
+        return System.Text.RegularExpressions.Regex.Replace(
+            xml,
+            @"(<(?:Phone|EmergencyPhone)>)([^<]{6})([^<]*)(</)",
+            "$1$2***$4");
+    }
+}

@@ -1,0 +1,191 @@
+@page "/"
+@inject PrintJobService JobService
+@implements IDisposable
+
+<h1 class="h3 mb-4">
+    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+</h1>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Caricamento...</span>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-secondary mb-1 small">Totale 24h</p>
+                            <h3 class="mb-0 fw-bold">@_stats.Total</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-3 p-3">
+                            <i class="bi bi-printer fs-4 text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-secondary mb-1 small">Completati</p>
+                            <h3 class="mb-0 fw-bold text-success">@_stats.Completed</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                            <i class="bi bi-check-circle fs-4 text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-secondary mb-1 small">Falliti</p>
+                            <h3 class="mb-0 fw-bold text-danger">@_stats.Failed</h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-3 p-3">
+                            <i class="bi bi-x-circle fs-4 text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-secondary mb-1 small">In coda</p>
+                            <h3 class="mb-0 fw-bold text-warning">@_stats.Queued</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-3">
+                            <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Action -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h5 class="mb-1">Pronto a stampare?</h5>
+                <p class="text-secondary mb-0">Crea un nuovo job di stampa con etichetta GHS di pericolo</p>
+            </div>
+            <a href="/new-job" class="btn btn-primary btn-lg d-flex align-items-center gap-2">
+                <i class="bi bi-plus-circle"></i> Nuovo Job
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">Job recenti</h5>
+            <a href="/history" class="btn btn-sm btn-outline-primary">Vedi tutto</a>
+        </div>
+        <div class="card-body p-0">
+            @if (_recentJobs.Count == 0)
+            {
+                <div class="text-center text-secondary py-5">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                    Nessun job di stampa ancora. Crea il primo!
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Data</th>
+                                <th>Modalita'</th>
+                                <th>Template</th>
+                                <th>Stato</th>
+                                <th>Risultato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var job in _recentJobs)
+                            {
+                                <tr>
+                                    <td><code>#@job.Id</code></td>
+                                    <td class="text-nowrap">@job.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</td>
+                                    <td>
+                                        <span class="badge @(job.IntegrationMode == "FileDrop" ? "bg-info-subtle text-info" : "bg-warning-subtle text-warning")">
+                                            <i class="bi @(job.IntegrationMode == "FileDrop" ? "bi-folder" : "bi-globe") me-1"></i>@job.IntegrationMode
+                                        </span>
+                                    </td>
+                                    <td class="text-truncate" style="max-width: 200px;">@job.TemplateName</td>
+                                    <td>
+                                        @switch (job.Status)
+                                        {
+                                            case "Completed":
+                                                <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle me-1"></i>Completato</span>
+                                                break;
+                                            case "Failed":
+                                                <span class="badge bg-danger-subtle text-danger"><i class="bi bi-x-circle me-1"></i>Fallito</span>
+                                                break;
+                                            case "Processing":
+                                                <span class="badge bg-primary-subtle text-primary"><i class="bi bi-arrow-repeat me-1 spin"></i>In corso</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-clock me-1"></i>In coda</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td class="text-truncate small" style="max-width: 250px;">@job.ResultMessage</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private (int Total, int Completed, int Failed, int Queued) _stats;
+    private List<PrintJob> _recentJobs = new();
+    private Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+        _refreshTimer = new Timer(async _ =>
+        {
+            await LoadDataAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _stats = await JobService.GetStats24hAsync();
+        _recentJobs = await JobService.GetRecentJobsAsync(10);
+        _loading = false;
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}

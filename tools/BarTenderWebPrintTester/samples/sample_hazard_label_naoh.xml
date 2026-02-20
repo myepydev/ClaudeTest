@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HazardLabel Version="1.0" Language="it">
+  <Product>
+    <ProductIdentifier>Sodio idrossido (NaOH)</ProductIdentifier>
+    <InternalCode>CHM-NAO-010</InternalCode>
+    <BatchLot>LOT-2026-0088</BatchLot>
+    <NetQuantity>500 g</NetQuantity>
+  </Product>
+  <Hazard>
+    <SignalWord>Pericolo</SignalWord>
+    <HazardStatements>
+      <Statement>H290 - Può essere corrosivo per i metalli</Statement>
+      <Statement>H314 - Provoca gravi ustioni cutanee e gravi lesioni oculari</Statement>
+    </HazardStatements>
+    <PrecautionaryStatements>
+      <Statement>P260 - Non respirare le polveri</Statement>
+      <Statement>P280 - Indossare guanti/indumenti protettivi/protezione per gli occhi/il viso</Statement>
+      <Statement>P301+P330+P331 - IN CASO DI INGESTIONE: sciacquare la bocca. NON provocare il vomito</Statement>
+      <Statement>P303+P361+P353 - IN CASO DI CONTATTO CON LA PELLE (o con i capelli): togliere immediatamente tutti gli indumenti contaminati. Sciacquare la pelle con acqua</Statement>
+      <Statement>P305+P351+P338 - IN CASO DI CONTATTO CON GLI OCCHI: sciacquare accuratamente per parecchi minuti</Statement>
+    </PrecautionaryStatements>
+  </Hazard>
+  <Pictograms>
+    <Pictogram>GHS05</Pictogram>
+  </Pictograms>
+  <Supplier>
+    <Name>ChimicaTest S.r.l.</Name>
+    <Address>Via Roma 1, 20100 Milano (MI), Italia</Address>
+    <Phone>+39 02 1234567</Phone>
+  </Supplier>
+</HazardLabel>

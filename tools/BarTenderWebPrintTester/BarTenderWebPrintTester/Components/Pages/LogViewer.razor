@@ -1,0 +1,130 @@
+@page "/logs"
+@inject BarTenderWebPrintTester.Logging.InMemoryLogSink LogSink
+@implements IDisposable
+
+<h1 class="h3 mb-4">
+    <i class="bi bi-journal-text me-2"></i>Log Viewer
+</h1>
+
+<!-- Filters -->
+<div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+    <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small fw-semibold">Livello minimo:</label>
+        <select class="form-select form-select-sm" style="width: auto;" @bind="_minLevel" @bind:after="RefreshLogs">
+            <option value="">Tutti</option>
+            <option value="Debug">Debug</option>
+            <option value="Information">Information</option>
+            <option value="Warning">Warning</option>
+            <option value="Error">Error</option>
+            <option value="Fatal">Fatal</option>
+        </select>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small fw-semibold">Limite:</label>
+        <select class="form-select form-select-sm" style="width: auto;" @bind="_limit" @bind:after="RefreshLogs">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+        </select>
+    </div>
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="autoRefresh" @bind="_autoRefresh" />
+        <label class="form-check-label small" for="autoRefresh">Auto-refresh (2s)</label>
+    </div>
+    <button class="btn btn-sm btn-outline-primary" @onclick="RefreshLogs">
+        <i class="bi bi-arrow-clockwise me-1"></i>Aggiorna
+    </button>
+</div>
+
+<!-- Log Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-sm table-hover align-middle mb-0 font-monospace" style="font-size: 0.78rem;">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th style="width: 160px;">Timestamp</th>
+                        <th style="width: 80px;">Livello</th>
+                        <th>Messaggio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_logEntries.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="text-center text-secondary py-4">
+                                Nessun log disponibile.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var entry in _logEntries)
+                    {
+                        <tr class="@GetRowClass(entry.Level)">
+                            <td class="text-nowrap">@entry.Timestamp.ToString("HH:mm:ss.fff")</td>
+                            <td>
+                                <span class="badge @GetBadgeClass(entry.Level)">@entry.Level</span>
+                            </td>
+                            <td>
+                                @entry.Message
+                                @if (!string.IsNullOrEmpty(entry.Exception))
+                                {
+                                    <br /><small class="text-danger">@entry.Exception</small>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _minLevel = "Information";
+    private int _limit = 100;
+    private bool _autoRefresh = true;
+    private IReadOnlyList<BarTenderWebPrintTester.Logging.LogEntry> _logEntries = Array.Empty<BarTenderWebPrintTester.Logging.LogEntry>();
+    private Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        RefreshLogs();
+        _timer = new Timer(_ =>
+        {
+            if (_autoRefresh)
+            {
+                RefreshLogs();
+                InvokeAsync(StateHasChanged);
+            }
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private void RefreshLogs()
+    {
+        _logEntries = LogSink.GetEntries(
+            string.IsNullOrEmpty(_minLevel) ? null : _minLevel,
+            _limit);
+    }
+
+    private static string GetBadgeClass(string level) => level switch
+    {
+        "Error" or "Fatal" => "bg-danger",
+        "Warning" => "bg-warning text-dark",
+        "Information" => "bg-info text-dark",
+        "Debug" => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    private static string GetRowClass(string level) => level switch
+    {
+        "Error" or "Fatal" => "table-danger",
+        "Warning" => "table-warning",
+        _ => ""
+    };
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

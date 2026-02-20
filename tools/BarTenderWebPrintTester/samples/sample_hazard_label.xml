@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HazardLabel Version="1.0" Language="it">
+  <Product>
+    <ProductIdentifier>Acetone</ProductIdentifier>
+    <InternalCode>CHM-ACE-001</InternalCode>
+    <BatchLot>LOT-2026-0042</BatchLot>
+    <NetQuantity>1 L</NetQuantity>
+  </Product>
+  <Hazard>
+    <SignalWord>Pericolo</SignalWord>
+    <HazardStatements>
+      <Statement>H225 - Liquido e vapori facilmente infiammabili</Statement>
+      <Statement>H319 - Provoca grave irritazione oculare</Statement>
+      <Statement>H336 - Può provocare sonnolenza o vertigini</Statement>
+    </HazardStatements>
+    <PrecautionaryStatements>
+      <Statement>P210 - Tenere lontano da fonti di calore, superfici calde, scintille, fiamme libere e altre fonti di accensione. Non fumare</Statement>
+      <Statement>P233 - Tenere il recipiente ben chiuso</Statement>
+      <Statement>P240 - Mettere a terra e a massa il contenitore e il dispositivo ricevente</Statement>
+      <Statement>P305+P351+P338 - IN CASO DI CONTATTO CON GLI OCCHI: sciacquare accuratamente per parecchi minuti. Togliere le eventuali lenti a contatto se è agevole farlo. Continuare a sciacquare</Statement>
+      <Statement>P403+P233 - Conservare in luogo ben ventilato. Tenere il recipiente ben chiuso</Statement>
+    </PrecautionaryStatements>
+  </Hazard>
+  <Pictograms>
+    <Pictogram>GHS02</Pictogram>
+    <Pictogram>GHS07</Pictogram>
+  </Pictograms>
+  <Supplier>
+    <Name>ChimicaTest S.r.l.</Name>
+    <Address>Via Roma 1, 20100 Milano (MI), Italia</Address>
+    <Phone>+39 02 1234567</Phone>
+    <EmergencyPhone>+39 02 7654321</EmergencyPhone>
+  </Supplier>
+  <UFI>N1QV-10GN-J00G-XXXX</UFI>
+  <UNNumber>UN1090</UNNumber>
+</HazardLabel>
