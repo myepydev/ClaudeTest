@@ -1,0 +1,24 @@
+{
+  "product_name": "Acetone",
+  "signal_word": "Pericolo",
+  "pictograms": ["GHS02", "GHS07"],
+  "hazard_statements": [
+    "H225 - Liquido e vapori facilmente infiammabili",
+    "H319 - Provoca grave irritazione oculare",
+    "H336 - Può provocare sonnolenza o vertigini"
+  ],
+  "precautionary_statements": [
+    "P210 - Tenere lontano da fonti di calore, superfici calde, scintille, fiamme libere e altre fonti di accensione. Non fumare",
+    "P233 - Tenere il recipiente ben chiuso",
+    "P305+P351+P338 - IN CASO DI CONTATTO CON GLI OCCHI: sciacquare accuratamente per parecchi minuti"
+  ],
+  "supplier_name": "ChimicaTest S.r.l.",
+  "supplier_address": "Via Roma 1, 20100 Milano (MI), Italia",
+  "supplier_phone": "+39 02 1234567",
+  "cas_number": "67-64-1",
+  "un_number": "UN1090",
+  "quantity": "1 L",
+  "batch_number": "LOT-2026-001",
+  "date": "2026-02-20",
+  "copies": 1
+}

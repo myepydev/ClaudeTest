@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "bartender-xml-label-test"
+version = "1.0.0"
+description = "Test tool for sending BTXML scripts to BarTender for hazard label printing"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov"]
+
+[project.scripts]
+btxml-test = "bartender_xml_test.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
